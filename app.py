@@ -61,11 +61,16 @@ min_date = today - datetime.timedelta(weeks=104)
 st.sidebar.subheader("Params")
 ticker = st.sidebar.text_input("Ticker", placeholder="AAPL").upper()
 st.sidebar.subheader("Date Range")
-end_date = st.sidebar.date_input("To", format="MM/DD/YYYY", value=today)
-start_date = st.sidebar.date_input(
-    "From (Max window size is two year)", format="MM/DD/YYYY", value=min_date
-)
 
+start_date = st.sidebar.date_input(
+    "Start Date ",
+    format="MM/DD/YYYY",
+    value=min_date,
+)
+st.sidebar.caption(
+    f"Max window size is two year lookback from current date for free api version, min start date: *{min_date.strftime('%Y-%m-%d')}*"
+)
+end_date = st.sidebar.date_input("End Date", format="MM/DD/YYYY", value=today)
 volume_breakout_threshold = st.sidebar.number_input(
     "Volume Breakout Threshold(%)", value=200.0, step=10.0
 )
@@ -73,8 +78,9 @@ price_change_threshold = st.sidebar.number_input(
     "Price Change Threshold(%)", value=2.0, step=0.5
 )
 holding_period = st.sidebar.number_input(
-    "Number of day holding", value=10, format="%d", step=1
+    "Number of day holding", value=10, format="%d", step=1, min_value=1
 )
+
 if st.sidebar.button(
     "Calculate",
     on_click=lambda: run_analysis(
