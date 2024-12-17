@@ -6,7 +6,6 @@ from plotly.subplots import make_subplots
 
 def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     print("Building breakout report...")
-    # data = data[["v", "vw", "t", "c"]]
     data["t"] = pd.to_datetime(data["t"], unit="ms")
     data["avg_vol"] = data["v"].rolling(20, min_periods=1).mean().shift(1)
     data["vol_ratio"] = data["v"] / data["avg_vol"]
@@ -16,37 +15,45 @@ def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     breakouts = data[
         (data["vol_ratio"] > vol_thresh / 100) & (data["price_change"] >= price_thresh)
     ].copy()
-    breakouts["Entry Price"] = data.loc[breakouts.index, "vw"].values
-    breakouts["Entry Date"] = data.loc[breakouts.index, "t"].values
+    breakouts["Entry Price"] = data.iloc[breakouts.index]["vw"].values
+    breakouts["Entry Date"] = data.iloc[breakouts.index]["t"].values
     exit_indices = np.clip(breakouts.index + hold_days, 0, len(data) - 1)
-    exit_indices = exit_indices
 
     # Extract exit prices and calculate returns
-    breakouts["Exit Price"] = data.loc[exit_indices, "vw"].values
-    breakouts["Exit Date"] = data.loc[exit_indices, "t"].values
+    breakouts["Exit Price"] = data.iloc[exit_indices]["vw"].values
+    breakouts["Exit Date"] = data.iloc[exit_indices]["t"].values
     breakouts["Return %"] = (
         (breakouts["Exit Price"] - breakouts["Entry Price"])
         / breakouts["Entry Price"]
         * 100
     )
-    breakouts["Date"] = pd.to_datetime(breakouts["t"], unit="ms").dt.strftime(
+    breakouts["Entry Date"] = pd.to_datetime(breakouts["Entry Date"]).dt.strftime(
         "%Y-%m-%d"
     )
-    breakouts["Exit Date"] = pd.to_datetime(
-        breakouts["Exit Date"], unit="ms"
-    ).dt.strftime("%Y-%m-%d")
+    breakouts["Exit Date"] = pd.to_datetime(breakouts["Exit Date"]).dt.strftime(
+        "%Y-%m-%d"
+    )
 
     # Select relevant columns
-    return breakouts[
-        ["Date", "Entry Price", "Exit Date", "Exit Price", "Return %", "o", "c", "vw"]
+    breakouts = breakouts[
+        [
+            "Entry Date",
+            "Entry Price",
+            "Exit Date",
+            "Exit Price",
+            "Return %",
+            "o",
+            "c",
+            "vw",
+        ]
     ].rename(
         columns={
-            "Date": "Entry Date",
             "o": "Entry Date Open",
             "c": "Entry Date Close",
             "vw": "Entry Date VWAP",
         }
     )
+    return breakouts
 
 
 def build_breakout_report(data):
@@ -70,10 +77,7 @@ def build_breakout_report(data):
 
 
 def build_graph(data, reports):
-    # data["t"] = pd.to_datetime(data["t"], unit="ms")
-    # data["20_Volume_Mean"] = data["v"].rolling(20, min_periods=1).mean().shift(1)
-    # data["vol_ratio"] = data["v"] / data["20_Volume_Mean"]
-    # data["price_change"] = data["vw"].pct_change() * 100
+
     # Create a subplot figure
     fig = make_subplots(
         rows=2,
@@ -94,20 +98,18 @@ def build_graph(data, reports):
             name="Volume Weighted Average Price",
             line=dict(color="blue"),
         ),
-        # secondary_y=Fals,
         row=1,
         col=1,
     )
     # Add Entry Price markers
     fig.add_trace(
         go.Scatter(
-            x=pd.to_datetime(reports["Entry Date"]),
+            x=reports["Entry Date"],
             y=reports["Entry Price"],
             mode="markers",
             name="Entry Price",
             marker=dict(color="green", size=10, symbol="triangle-up"),
         ),
-        # secondary_y=False,
         row=1,
         col=1,
     )
@@ -115,13 +117,12 @@ def build_graph(data, reports):
     # Add Exit Price markers
     fig.add_trace(
         go.Scatter(
-            x=pd.to_datetime(reports["Exit Date"]),
+            x=reports["Exit Date"],
             y=reports["Exit Price"],
             mode="markers",
             name="Exit Price",
             marker=dict(color="red", size=10, symbol="triangle-down"),
         ),
-        # secondary_y=False,
         row=1,
         col=1,
     )
@@ -153,25 +154,6 @@ def build_graph(data, reports):
         col=1,
         secondary_y=False,
     )
-
-    # # Add vol_ratio line on secondary y-axis
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=data["t"],
-    #         y=data["vol_ratio"],
-    #         mode="markers",
-    #         name="Volume Ratio",
-    #         marker=dict(
-    #             size=data["vol_ratio"].fillna(0),
-    #             color="cyan",
-    #             opacity=np.clip(data["vol_ratio"].fillna(0), 0, 1),
-    #             symbol="circle",
-    #         ),
-    #     ),
-    #     row=2,
-    #     col=1,
-    #     secondary_y=True,
-    # )
 
     # Add price_change as scatter bubbles
     fig.add_trace(
