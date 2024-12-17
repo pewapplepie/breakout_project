@@ -1,48 +1,58 @@
 import pandas as pd
 import streamlit as st
 from agent import Agent
-from calc import build_graph, build_breakout_report
+from calc import build_breakout_trades, build_graph, build_breakout_report
 import datetime
 
 st.set_page_config(page_title="Volume Breakout Analysis", layout="wide")
 
 st.title("Volume Breakout Analysis")
+if "data" not in st.session_state:
+    st.session_state.data = None
+if "trades" not in st.session_state:
+    st.session_state.trades = None
 if "report" not in st.session_state:
-    st.session_state.report = pd.DataFrame()
+    st.session_state.report = None
 if "calc_completed" not in st.session_state:
     st.session_state.calc_completed = 0
-if "raw_data" not in st.session_state:
-    st.session_state.raw_data = pd.DataFrame()
+if "custome_api" not in st.session_state:
+    st.session_state.custome_api = ""
+
+agent = Agent(st.session_state.custome_api)
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def fetch_data(ticker, start_date, end_date):
-    print("agenting to fetch data...")
-    agent = Agent()
+    print("calling agent to fetch data...")
     data = agent.get_dataframe(ticker, start_date, end_date)
     if data.empty:
         print("no data available")
     return data
 
 
-@st.cache_data(ttl=600)
+# @st.cache_data(ttl=60)
 def run_analysis(**kwargs):
     print("Fetching data...")
     data = fetch_data(
         ticker, start_date=kwargs["start_date"], end_date=kwargs["end_date"]
     )
     print("Running analysis...")
-    report = build_breakout_report(
+    trades = build_breakout_trades(
         data,
         vol_thresh=kwargs["volume_threshold"],
         price_thresh=kwargs["price_threshold"],
         hold_days=kwargs["holding_period"],
     )
 
+    report = build_breakout_report(trades)
+    st.session_state.data = data
+    st.session_state.trades = trades
     st.session_state.report = report
-    st.session_state.raw_data = data
-    st.session_state.calc_completed = 1
+    print("Analysis completed")
+    print(st.session_state.report)
     print("Completed analysis")
+    st.session_state.calc_completed = 1
+    # return data, trades, report
 
 
 today = datetime.datetime.today()
@@ -65,7 +75,7 @@ price_change_threshold = st.sidebar.number_input(
 holding_period = st.sidebar.number_input(
     "Number of day holding", value=10, format="%d", step=1
 )
-st.sidebar.button(
+if st.sidebar.button(
     "Calculate",
     on_click=lambda: run_analysis(
         ticker=ticker,
@@ -75,16 +85,37 @@ st.sidebar.button(
         price_threshold=price_change_threshold,
         holding_period=holding_period,
     ),
+):
+    st.session_state.calc_completed = 1
+    st.rerun()
+st.sidebar.divider()
+st.sidebar.subheader("Custome API")
+st.sidebar.write("If you wish to use a custom API, please provide your Polygon API key")
+st.session_state.custome_api = st.sidebar.text_input(
+    "Polygon API Key", placeholder="your_api_key"
 )
+if st.sidebar.button("Validate API Key"):
+    if agent.is_api_key_valid(st.session_state.custome_api):
+        st.success("API Key is valid!")
+        agent = Agent(st.session_state.custome_api)
+    else:
+        st.error("Invalid API Key. Please check and try again.")
+        st.session_state.custome_api = ""
+
 
 if st.session_state.calc_completed:
 
-    if not st.session_state.report.empty:
+    if st.session_state.report is not None:
         print("Report Generated")
+        st.write("The app use vwap for all calculation to account for look-ahead bias")
+        st.subheader("Breakout Performance Report")
         st.dataframe(st.session_state.report)
 
-        fig = build_graph(st.session_state.raw_data, st.session_state.report)
+        fig = build_graph(st.session_state.data, st.session_state.trades)
         st.plotly_chart(fig, use_container_width=True)
+
+        st.write("Trades Report")
+        st.dataframe(st.session_state.trades)
 
     else:
         st.write("No Breakout")

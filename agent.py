@@ -10,12 +10,19 @@ API_KEY = os.getenv("api_key")
 
 
 class Agent:
-    def __init__(self):
+    def __init__(self, api_key=""):
         self.base_url: str = "https://api.polygon.io/v2"
-        self.header = {"Authorization": f"Bearer {API_KEY}"}
+        self.api_key = api_key if api_key != "" else API_KEY
         self.data = None
 
+    def is_api_key_valid(self, api_key):
+        url = "https://api.polygon.io/v1/marketstatus/now"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        response = requests.get(url, headers=headers)
+        return response.status_code == 200
+
     def get_historical_data(self, ticker, start_date, end_date):
+        header = {"Authorization": f"Bearer {self.api_key}"}
         ticker = ticker.upper()
         url = f"{self.base_url}/aggs/ticker/{ticker}/range/1/day/{start_date}/{end_date}?adjusted=true&sort=asc"
 
@@ -23,7 +30,7 @@ class Agent:
         next_url = url
 
         while next_url:
-            response = requests.get(next_url, headers=self.header)
+            response = requests.get(next_url, headers=header)
             if response.status_code == 200:
                 json_data = response.json()
                 results = json_data.get("results", [])

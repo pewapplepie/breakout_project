@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def build_breakout_report(data, vol_thresh=200, price_thresh=2, hold_days=10):
+def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     print("Building breakout report...")
     data = data[["v", "vw", "t"]].copy()
     data["t"] = pd.to_datetime(data["t"], unit="ms")
@@ -36,6 +36,26 @@ def build_breakout_report(data, vol_thresh=200, price_thresh=2, hold_days=10):
     # Select relevant columns
     return breakouts[["Date", "vw", "Exit Price", "Exit Date", "Return %"]].rename(
         columns={"vw": "Entry Price"}
+    )
+
+
+def build_breakout_report(data):
+    wintrades = sum(data["Return %"] >= 0)
+    losstrades = sum(data["Return %"] < 0)
+    avg_return = np.mean(data["Return %"])
+    max_return = np.max(data["Return %"])
+    min_return = np.min(data["Return %"])
+    total_trades = wintrades + losstrades
+    return pd.DataFrame(
+        {
+            "Total Trades": total_trades,
+            "Wining Trades": wintrades,
+            "Losing Trades": losstrades,
+            "Avg Return": avg_return,
+            "Max Return": max_return,
+            "Min Return": min_return,
+        },
+        index=["Performance Metrics"],
     )
 
 
@@ -124,24 +144,24 @@ def build_graph(data, reports):
         secondary_y=False,
     )
 
-    # Add vol_ratio line on secondary y-axis
-    fig.add_trace(
-        go.Scatter(
-            x=data["t"],
-            y=data["vol_ratio"],
-            mode="markers",
-            name="Volume Ratio",
-            marker=dict(
-                size=data["vol_ratio"].fillna(0),
-                color="cyan",
-                opacity=np.clip(data["vol_ratio"].fillna(0), 0, 1),
-                symbol="circle",
-            ),
-        ),
-        row=2,
-        col=1,
-        secondary_y=True,
-    )
+    # # Add vol_ratio line on secondary y-axis
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=data["t"],
+    #         y=data["vol_ratio"],
+    #         mode="markers",
+    #         name="Volume Ratio",
+    #         marker=dict(
+    #             size=data["vol_ratio"].fillna(0),
+    #             color="cyan",
+    #             opacity=np.clip(data["vol_ratio"].fillna(0), 0, 1),
+    #             symbol="circle",
+    #         ),
+    #     ),
+    #     row=2,
+    #     col=1,
+    #     secondary_y=True,
+    # )
 
     # Add price_change as scatter bubbles
     fig.add_trace(
@@ -151,17 +171,36 @@ def build_graph(data, reports):
             mode="markers",
             name="Price Change (%)",
             marker=dict(
-                size=abs(data["price_change"].fillna(0)),
-                color="pink",
-                opacity=np.clip(abs(data["price_change"]).fillna(0), 0, 1),
-                symbol="square",
+                size=np.where(
+                    data["price_change"] > 2,
+                    np.clip(data["price_change"].fillna(0), 5, 10),  # Scale up size
+                    2,  # Default size for < 2%
+                ),
+                color="cyan",
+                opacity=np.where(
+                    data["price_change"] > 2,
+                    np.clip(
+                        data["price_change"].fillna(0) / 5, 0.7, 0.9
+                    ),  # Increase opacity
+                    0.2,  # Default opacity for < 2%
+                ),
+                symbol="circle",
             ),
         ),
         row=2,
         col=1,
         secondary_y=True,
     )
-
+    # Add custom legend entries
+    fig.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode="markers",
+            name="High Price Change (>2%)",
+            marker=dict(size=30, color="cyan", opacity=0.9, symbol="circle"),
+        )
+    )
     # Customize layout
     fig.update_layout(
         title="Stock Prices, Trades, and Volume Metrics",
