@@ -8,7 +8,7 @@ def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     print("Building breakout report...")
     data["t"] = pd.to_datetime(data["t"], unit="ms")
     data["avg_vol"] = data["v"].rolling(20, min_periods=1).mean().shift(1)
-    data["vol_ratio"] = data["v"] / data["avg_vol"]
+    data["vol_ratio"] = (data["v"] - data["avg_vol"]) / data["avg_vol"]
     data["price_change"] = (data["vw"] - data["c"].shift(1)) / data["c"].shift(1) * 100
 
     # Find breakout days
