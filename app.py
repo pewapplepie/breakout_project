@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from agent import Agent
-from calc import build_breakout_trades, build_graph, build_breakout_report
+from calc import *
 import datetime
 
 st.set_page_config(page_title="Volume Breakout Analysis", layout="wide")
