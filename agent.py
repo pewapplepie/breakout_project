@@ -39,5 +39,3 @@ class Agent:
         data = self.get_historical_data(ticker, start_dt, end_dt)
         df = pd.DataFrame(data)
         return df
-
-
