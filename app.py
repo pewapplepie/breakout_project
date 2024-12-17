@@ -113,7 +113,13 @@ if st.session_state.calc_completed:
 
     if st.session_state.report is not None:
         print("Report Generated")
-        st.write("The app use vwap for all calculation to account for look-ahead bias")
+        st.write(
+            "The breakout define as volume ratio > threshold and price change >= threshold"
+        )
+        st.caption(
+            "- using *VWAP* to compare the previous *Close* price for price change. Also serve as price for the trade(Buy and Sell)"
+        )
+
         st.subheader("Breakout Performance Report")
         st.dataframe(st.session_state.report)
 

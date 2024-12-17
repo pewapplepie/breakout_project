@@ -6,17 +6,18 @@ from plotly.subplots import make_subplots
 
 def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     print("Building breakout report...")
-    data = data[["v", "vw", "t"]].copy()
+    # data = data[["v", "vw", "t", "c"]]
     data["t"] = pd.to_datetime(data["t"], unit="ms")
     data["avg_vol"] = data["v"].rolling(20, min_periods=1).mean().shift(1)
     data["vol_ratio"] = data["v"] / data["avg_vol"]
-    data["price_change"] = data["vw"].pct_change() * 100
+    data["price_change"] = (data["vw"] - data["c"].shift(1)) / data["c"].shift(1) * 100
 
     # Find breakout days
     breakouts = data[
-        (data["vol_ratio"] > vol_thresh / 100) & (data["price_change"] > price_thresh)
+        (data["vol_ratio"] > vol_thresh / 100) & (data["price_change"] >= price_thresh)
     ].copy()
-
+    breakouts["Entry Price"] = data.loc[breakouts.index, "vw"].values
+    breakouts["Entry Date"] = data.loc[breakouts.index, "t"].values
     exit_indices = np.clip(breakouts.index + hold_days, 0, len(data) - 1)
     exit_indices = exit_indices
 
@@ -24,7 +25,9 @@ def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     breakouts["Exit Price"] = data.loc[exit_indices, "vw"].values
     breakouts["Exit Date"] = data.loc[exit_indices, "t"].values
     breakouts["Return %"] = (
-        (breakouts["Exit Price"] - breakouts["vw"]) / breakouts["vw"] * 100
+        (breakouts["Exit Price"] - breakouts["Entry Price"])
+        / breakouts["Entry Price"]
+        * 100
     )
     breakouts["Date"] = pd.to_datetime(breakouts["t"], unit="ms").dt.strftime(
         "%Y-%m-%d"
@@ -34,8 +37,15 @@ def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
     ).dt.strftime("%Y-%m-%d")
 
     # Select relevant columns
-    return breakouts[["Date", "vw", "Exit Price", "Exit Date", "Return %"]].rename(
-        columns={"vw": "Entry Price", "Date": "Entry Date"}
+    return breakouts[
+        ["Date", "Entry Price", "Exit Date", "Exit Price", "Return %", "o", "c", "vw"]
+    ].rename(
+        columns={
+            "Date": "Entry Date",
+            "o": "Entry Date Open",
+            "c": "Entry Date Close",
+            "vw": "Entry Date VWAP",
+        }
     )
 
 
@@ -60,10 +70,10 @@ def build_breakout_report(data):
 
 
 def build_graph(data, reports):
-    data["t"] = pd.to_datetime(data["t"], unit="ms")
-    data["20_Volume_Mean"] = data["v"].rolling(20, min_periods=1).mean().shift(1)
-    data["vol_ratio"] = data["v"] / data["20_Volume_Mean"]
-    data["price_change"] = data["vw"].pct_change() * 100
+    # data["t"] = pd.to_datetime(data["t"], unit="ms")
+    # data["20_Volume_Mean"] = data["v"].rolling(20, min_periods=1).mean().shift(1)
+    # data["vol_ratio"] = data["v"] / data["20_Volume_Mean"]
+    # data["price_change"] = data["vw"].pct_change() * 100
     # Create a subplot figure
     fig = make_subplots(
         rows=2,
@@ -134,7 +144,7 @@ def build_graph(data, reports):
     fig.add_trace(
         go.Scatter(
             x=data["t"],
-            y=data["20_Volume_Mean"],
+            y=data["avg_vol"],
             mode="lines",
             name="20-Day Volume Mean",
             line=dict(color="orange", dash="dot"),
