@@ -35,7 +35,7 @@ def build_breakout_trades(data, vol_thresh=200, price_thresh=2, hold_days=10):
 
     # Select relevant columns
     return breakouts[["Date", "vw", "Exit Price", "Exit Date", "Return %"]].rename(
-        columns={"vw": "Entry Price"}
+        columns={"vw": "Entry Price", "Date": "Entry Date"}
     )
 
 
@@ -91,7 +91,7 @@ def build_graph(data, reports):
     # Add Entry Price markers
     fig.add_trace(
         go.Scatter(
-            x=pd.to_datetime(reports["Date"]),
+            x=pd.to_datetime(reports["Entry Date"]),
             y=reports["Entry Price"],
             mode="markers",
             name="Entry Price",
@@ -105,7 +105,7 @@ def build_graph(data, reports):
     # Add Exit Price markers
     fig.add_trace(
         go.Scatter(
-            x=pd.to_datetime(reports["Date"]),
+            x=pd.to_datetime(reports["Exit Date"]),
             y=reports["Exit Price"],
             mode="markers",
             name="Exit Price",
