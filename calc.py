@@ -81,7 +81,7 @@ def build_graph(data, reports):
             x=data["t"],
             y=data["vw"],
             mode="lines",
-            name="Close Price",
+            name="Volume Weighted Average Price",
             line=dict(color="blue"),
         ),
         # secondary_y=Fals,
