@@ -12,3 +12,6 @@ requests
 setuptools
 uvicorn
 streamlit
+plotly
+matplotlib
+seaborn
