@@ -11,3 +11,4 @@ python-multipart
 requests
 setuptools
 uvicorn
+streamlit
